@@ -1,10 +1,54 @@
-# CRITICAL BLOCKER: 400 Token Endpoint Error
+# CRITICAL BLOCKER: 400 Token Endpoint Error — **RESOLVED 2026-08-12 23:52 UTC**
 
-**Status**: 🔴 BLOCKER - Password flow fails after email + password entry  
+**Status**: ✅ RESOLVED - Root cause identified and fixed  
 **Date Discovered**: 2026-08-12  
+**Date Resolved**: 2026-08-12 23:52 UTC  
 **Affected Flow**: Password → MFA → Token Exchange  
-**Error**: POST /oauth2/v2.0/token returns 400 Bad Request  
+**Initial Error**: POST /oauth2/v2.0/token returns 400 Bad Request  
+**Actual Error**: AADSTS9002326 - Cross-origin token redemption not permitted  
 **Request ID**: 019ff31c-10c8-7211-98d0-1d5455b28d1e  
+
+---
+
+## Root Cause — IDENTIFIED & RESOLVED ✅
+
+**Actual Error** (from token endpoint response):
+```json
+{
+  "error": "invalid_request",
+  "error_description": "AADSTS9002326: Cross-origin token redemption is permitted only for the 'Single-Page Application' client-type. Request origin: 'https://orange-coast-0407c830f.7.azurestaticapps.net'.",
+  "error_codes": [9002326]
+}
+```
+
+**The Problem**:
+- CIAM app registration `passkey-fresh-test-2` (fb04a2bd-1a04-4647-80c9-1b8affa13ef4) was configured as an SPA ✓
+- BUT the SPA redirect URIs only included the **local development URL**: `https://auth.petchyentraexternalidtest03.ciamlogin.com:3000/`
+- When browser made token request from **production Static Web Apps URL** (`https://orange-coast-0407c830f.7.azurestaticapps.net/`), CIAM rejected it as cross-origin
+- CIAM's security model: Only URIs explicitly registered in the app can make cross-origin token requests
+
+**The Fix** (Applied 2026-08-12 23:52 UTC):
+1. Retrieved app object ID: `98566591-b49b-4ecc-995f-8a109d61d1bd`
+2. Updated SPA redirect URIs via Microsoft Graph PATCH:
+   ```
+   PATCH /applications/98566591-b49b-4ecc-995f-8a109d61d1bd
+   {
+     "spa": {
+       "redirectUris": [
+         "https://auth.petchyentraexternalidtest03.ciamlogin.com:3000/",
+         "https://orange-coast-0407c830f.7.azurestaticapps.net/"
+       ]
+     }
+   }
+   ```
+3. Verified update succeeded:
+   ```
+   az ad app show --id fb04a2bd-1a04-4647-80c9-1b8affa13ef4 --query spa.redirectUris
+   [
+     "https://orange-coast-0407c830f.7.azurestaticapps.net/",
+     "https://auth.petchyentraexternalidtest03.ciamlogin.com:3000/"
+   ]
+   ```
 
 ---
 
@@ -14,15 +58,17 @@
 2. CIAM progresses to password entry screen
 3. User enters password and clicks "Sign in"
 4. Behind-the-scenes, CIAM attempts POST /oauth2/v2.0/token
-5. CIAM token endpoint returns **400 Bad Request**
+5. CIAM token endpoint returns **400 Bad Request** with error code 9002326
 6. User sees no error; page hangs indefinitely
 7. Browser DevTools Network tab shows the failed token request
 
 ---
 
-## Root Cause Analysis
+## Root Cause Analysis — RESOLVED ✅ (Original Investigation Below)
 
-### Most Likely Causes (in order):
+The root cause was identified immediately once the token endpoint error response was captured. See **Root Cause — IDENTIFIED & RESOLVED** section above.
+
+**Original Investigation** (preserved for reference):
 
 1. **PKCE code_verifier mismatch** (50% probability)
    - Authorization request sent code_challenge: `eM6C_Nc1Yur9I_OOAiy0d9orU8JlmmyaQPAcCA_N5_s`

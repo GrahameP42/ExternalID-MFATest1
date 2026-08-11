@@ -11,7 +11,8 @@
 - Test user accounts in External ID tenant (583e0a9e-7cb8-4f1d-a627-e7819344f513)
 - Passkey registered on test device (Windows Hello, FIDO2 hardware key, or phone synced passkey)
 - Browser with WebAuthn support (Chrome 90+, Edge 90+, Safari 13+, Firefox 60+)
-- Private browser session (to avoid cached credentials)
+- **Browser Mode**: Use regular (non-private/non-InPrivate) session. ⚠️ **Important**: Edge InPrivate mode fails at CIAM email entry due to third-party cookie/storage restrictions. Use regular Edge window or Chrome for testing.
+- Alternatively, clear browser cookies/cache between test runs instead of using private mode
 
 ---
 

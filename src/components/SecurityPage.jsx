@@ -195,13 +195,12 @@ export const SecurityPage = () => {
     const handleStepUp = async () => {
         setStepUpLoading(true);
         try {
-            // prompt=login forces fresh authentication with no login_hint so CIAM
-            // shows the email/passkey chooser. The user can then sign in with their
-            // registered passkey (gives hwk/fido in amr) rather than being funnelled
-            // into the password → phone-OTP path where CIAM has a 500 error.
+            // Redirect to CIAM for step-up MFA. Use select_account (not login) so
+            // CIAM shows the account picker without forcing full re-auth cascade to
+            // MSA federation (which rejects the CIAM redirect_uri on login.live.com).
             await instance.loginRedirect({
                 ...loginRequest,
-                prompt: 'login',
+                prompt: 'select_account',
             });
         } catch (err) {
             console.error('Step-up redirect failed', err);

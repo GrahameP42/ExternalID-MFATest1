@@ -42,25 +42,21 @@ const LandingPage = () => {
         e?.preventDefault();
         setLoading(true);
         try {
-            // Smart routing (same as local dev):
-            // 1. If email entered, resolve it against the directory via the SWA API
-            //    token proxy (no CORS issue — runs server-side).
-            //    - Existing user  → loginHint = OID UPN → CIAM skips email field,
-            //      routes to password/passkey step. User can click "Use security key".
-            //    - New user       → no loginHint → CIAM shows email field + "Create one".
-            // 2. If email blank (or lookup fails), no loginHint → CIAM blank email
-            //    field where autocomplete="username webauthn" surfaces passkey autofill.
-            let request = { ...loginRequest, prompt: 'login' };
+            // Smart routing via SWA API token proxy (resolveLoginHint).
+            // - Existing user: loginHint = typed email → CIAM pre-fills, routes to password/passkey.
+            // - New user (not found): no loginHint → CIAM blank email + "Create one" link.
+            // - Blank email: no loginHint → CIAM blank email → passkey autofill works.
+            //
+            // NO prompt=login: forcing re-auth cascades to MSA federation (login.live.com)
+            // which rejects the CIAM redirect_uri. CIAM handles session management correctly.
+            let request = { ...loginRequest };
             if (email.trim()) {
                 const upn = await resolveLoginHint(email.trim());
                 if (upn) {
-                    // User exists in CIAM directory — pass the FRIENDLY EMAIL (not the
-                    // OID-based UPN) so CIAM displays it correctly in the header.
-                    // The UPN lookup was only needed to confirm existence; CIAM routes
-                    // local accounts correctly from the friendly email too.
+                    // User confirmed to exist — pass friendly email (not OID UPN).
                     request = { ...request, loginHint: email.trim() };
                 }
-                // New user (upn === null): no loginHint, CIAM handles sign-up routing
+                // New user (upn === null): no loginHint, CIAM routes to sign-up.
             }
             await instance.loginRedirect(request);
         } finally {

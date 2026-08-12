@@ -388,24 +388,31 @@ Migrated user first sign-in:
 7. User registers passkey → next sign-in with passkey → GREEN banner
 ```
 
-### 7.3 Temporary Access Pass for Initial Onboarding
+### 7.3 Admin-Set Temporary Password for Initial Onboarding
 
-For users who shouldn't receive a temporary password:
+For users who need an initial credential without going through self-service sign-up:
 
 ```powershell
 $userId = "<migrated-user-oid>"
-$tap = az rest --method POST `
-  --uri "https://graph.microsoft.com/v1.0/users/$userId/authentication/temporaryAccessPassMethods" `
+
+# Set temporary password — user must change on first sign-in
+az rest --method PATCH `
+  --uri "https://graph.microsoft.com/v1.0/users/$userId" `
   --headers "Content-Type=application/json" `
   --body '{
-    "isUsableOnce": true,
-    "lifetimeInMinutes": 60
-  }' | ConvertFrom-Json
+    "passwordProfile": {
+      "password": "<secure-temp-password>",
+      "forceChangePasswordNextSignIn": true
+    }
+  }'
 
-Write-Host "TAP code: $($tap.temporaryAccessPass)"
-# Send to user via secure channel
-# User uses TAP for first sign-in, then registers passkey
+# Deliver the temp password to the user via a secure out-of-band channel
+# (e.g. encrypted email, secure messaging, in-person)
+# User signs in at CIAM → enters temp password → CIAM prompts password change
+# → user sets permanent password → app shows bootstrap banner → registers passkey
 ```
+
+> **Note**: Temporary Access Pass (TAP) is **not available** in External ID CIAM. TAP is a workforce Entra ID feature only — the CIAM SUSI flow has no TAP input step. Use temporary passwords (`forceChangePasswordNextSignIn: true`) instead.
 
 ---
 

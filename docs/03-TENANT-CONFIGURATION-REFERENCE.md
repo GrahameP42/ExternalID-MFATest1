@@ -537,7 +537,7 @@ az rest --method DELETE `
 | **Microsoft Authenticator (push)** | ❌ Not available | ❌ | ❌ | Requires Entra ID P1/P2 — workforce only |
 | **Microsoft Authenticator (TOTP)** | ❌ Not available | ❌ | ❌ | Requires Entra ID P1/P2 — workforce only |
 | **TOTP apps (Google Auth, Authy)** | ❌ Not available | ❌ | ❌ | No TOTP method type in External ID |
-| **Temporary Access Pass (TAP)** | ✅ Via Graph API | ✅ | ❌ | Time-limited; onboarding / account recovery only |
+| **Temporary Access Pass (TAP)** | ❌ Not supported⁴ | ❌ Not supported⁴ | ❌ | Workforce Entra ID only — CIAM has no TAP input step |
 | **Google Sign-In** | ❌ | ❌ | ✅ | UserFlow: `Google-OAUTH` |
 | **Facebook / Apple Sign-In** | ❌ | ❌ | ✅ | UserFlow: `Facebook-OAUTH` / Apple OIDC |
 | **Custom SAML / OIDC federation** | ❌ | ❌ | ✅ | Enterprise IdP or upstream workforce Entra ID |
@@ -549,6 +549,16 @@ az rest --method DELETE `
 ² **B2B/guest OTP suppression** — setting `allowExternalIdToUseEmailOtp: disabled` suppresses email OTP only for B2B invited guest users, not for local members.
 
 ³ **SMS OTP** — availability varies by tenant region and configuration. Returns HTTP 500 in some External ID tenants; not a reliable fallback.
+
+⁴ **Temporary Access Pass (TAP)** — TAP is a **workforce Entra ID feature only**. It is not available in External ID CIAM in any form:
+- The CIAM SUSI sign-in flow has no TAP input step — users cannot enter a TAP code
+- `POST /users/{id}/authentication/temporaryAccessPassMethods` via Graph API returns `405 methodNotAllowed` for CIAM local accounts or creates a record the sign-in flow will never surface
+- There is no programmatic path to consume a TAP in a CIAM user flow
+
+**Correct onboarding alternatives in External ID**:
+- **Temporary password**: Create user via Graph with `passwordProfile.password` + `forceChangePasswordNextSignIn: true` — user enters it at the CIAM password step
+- **Self-service sign-up**: CIAM SUSI flow with email OTP verification built in
+- **Admin invite**: Create account via Graph, deliver temp password securely out-of-band
 
 > **For organisations requiring Microsoft Authenticator or TOTP**:
 > These methods are not available in External ID CIAM. The recommended architecture is to federate External ID with an upstream **Entra ID workforce tenant** that supports the full Authenticator feature set. Users authenticate to the workforce tenant (Authenticator/TOTP/phone), and the resulting token flows to External ID via OIDC federation. See [04-MULTI-APP-SSO-MIGRATION.md](./04-MULTI-APP-SSO-MIGRATION.md) §6 for implementation details.

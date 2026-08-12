@@ -23,7 +23,10 @@ export const usePasskeyFetcher = ({ appToken, userId, onShowToast }) => {
         } = options;
 
         if (!appToken || !userId) {
-            setError('Access token or user ID not available');
+            // App token unavailable (CORS on client_credentials in production).
+            // Show empty list without error — the user can still attempt passkey
+            // registration; it will fail gracefully if the backend isn't available.
+            setPasskeys([]);
             if (setLoadingState) setIsLoading(false);
             return;
         }

@@ -42,14 +42,22 @@ const LandingPage = () => {
         e?.preventDefault();
         setLoading(true);
         try {
-            // prompt=login forces fresh CIAM session (clears account picker).
-            // If the user typed their email, pass it as loginHint so CIAM pre-fills
-            // the email field (routes to password/passkey step for known users).
-            // If blank, no loginHint — CIAM shows the empty email field where
-            // passkey autofill (autocomplete="username webauthn") can surface.
-            const request = email.trim()
-                ? { ...loginRequest, prompt: 'login', loginHint: email.trim() }
-                : { ...loginRequest, prompt: 'login' };
+            // Smart routing (same as local dev):
+            // 1. If email entered, resolve it against the directory via the SWA API
+            //    token proxy (no CORS issue — runs server-side).
+            //    - Existing user  → loginHint = OID UPN → CIAM skips email field,
+            //      routes to password/passkey step. User can click "Use security key".
+            //    - New user       → no loginHint → CIAM shows email field + "Create one".
+            // 2. If email blank (or lookup fails), no loginHint → CIAM blank email
+            //    field where autocomplete="username webauthn" surfaces passkey autofill.
+            let request = { ...loginRequest, prompt: 'login' };
+            if (email.trim()) {
+                const upn = await resolveLoginHint(email.trim());
+                if (upn) {
+                    request = { ...request, loginHint: upn };
+                }
+                // New user (upn === null): no loginHint, CIAM handles sign-up routing
+            }
             await instance.loginRedirect(request);
         } finally {
             setLoading(false);
@@ -62,7 +70,7 @@ const LandingPage = () => {
                 <Card.Body>
                     <h5 className="mb-1">Sign in or create an account</h5>
                     <p className="text-muted small mb-4">
-                        Enter your email to sign in, or leave it blank to use passkey autofill.
+                        Enter your email, or leave it blank to use passkey autofill.
                     </p>
                     <Form onSubmit={handleRedirect}>
                         <Form.Group className="mb-3">
@@ -81,7 +89,7 @@ const LandingPage = () => {
                         </Form.Group>
                         <Button type="submit" variant="primary" className="w-100" disabled={loading}>
                             {loading
-                                ? <><Spinner animation="border" size="sm" className="me-2" />Please wait...</>
+                                ? <><Spinner animation="border" size="sm" className="me-2" />Checking...</>
                                 : 'Continue'}
                         </Button>
                     </Form>

@@ -95,9 +95,10 @@ export const loginRequest = {
  * Application configuration consumed by the SPA at runtime.
  */
 export const appConfig = {
-    // In production the token endpoint is called directly from the browser (PoC only).
-    // For PROD deployments this MUST be proxied through a backend to protect the client secret.
-    proxyDomain: env.VITE_PROXY_DOMAIN || `https://${_ciamDomain}/${_tenantId}`,
+    // In production: SWA API function proxies client_credentials server-side (no CORS).
+    // In local dev: local CORS proxy on port 3001.
+    // Both expose the same path: /api/<tenantId>/oauth2/v2.0/token → proxied to CIAM.
+    proxyDomain: env.VITE_PROXY_DOMAIN || '/api',
     appId: _clientId,
     tenantId: _tenantId,
     appSecret: env.VITE_APP_SECRET || '',

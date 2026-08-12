@@ -39,9 +39,11 @@ const PasskeysSection = ({ onShowToast, appToken, userId, ngcmfaExpiry }) => {
 
     const { getCachedOperation, clearCachedOperation } = useAuthentication({ onShowToast });
 
-    // Handle initial fetch
+    // Handle initial fetch — call unconditionally when userId is known.
+    // fetchPasskeys handles null appToken by setting isLoading=false immediately,
+    // preventing an infinite spinner when client_credentials is CORS-blocked.
     useEffect(() => {
-        if (appToken && userId) {
+        if (userId) {
             fetchPasskeys().catch(console.error);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -1,0 +1,13 @@
+{
+  "name": "passkey-app-api",
+  "version": "1.0.0",
+  "description": "SWA API functions for passkey app — server-side token proxy",
+  "main": "src/functions/*.js",
+  "type": "commonjs",
+  "dependencies": {
+    "@azure/functions": "^4.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

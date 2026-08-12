@@ -7,3 +7,5 @@ node_modules/
 *.pfx
 
 .env
+.env.local
+.env.*.local

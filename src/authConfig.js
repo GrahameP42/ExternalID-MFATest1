@@ -95,13 +95,12 @@ export const loginRequest = {
  * Application configuration consumed by the SPA at runtime.
  */
 export const appConfig = {
-    proxyDomain: 'http://localhost:3001/api',
+    // In production the token endpoint is called directly from the browser (PoC only).
+    // For PROD deployments this MUST be proxied through a backend to protect the client secret.
+    proxyDomain: env.VITE_PROXY_DOMAIN || `https://${_ciamDomain}/${_tenantId}`,
     appId: _clientId,
     tenantId: _tenantId,
     appSecret: env.VITE_APP_SECRET || '',
     customDomain: env.VITE_CUSTOM_DOMAIN || 'login.azddns.top',
-    // passkey registration RP origin — must match the domain the app is served from
-    // when served via Front Door (login.azddns.top), this ensures the WebAuthn RP ID
-    // is a valid suffix of petchyentraexternalidtest03.ciamlogin.com
     passkeyOrigin: env.VITE_PASSKEY_ORIGIN || 'https://login.azddns.top',
 };

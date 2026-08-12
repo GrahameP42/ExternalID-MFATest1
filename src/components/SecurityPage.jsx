@@ -47,6 +47,7 @@ export const SecurityPage = () => {
     const [appTokenError, setAppTokenError] = useState(null);
     const [toasts, setToasts] = useState([]);
     const [stepUpLoading, setStepUpLoading] = useState(false);
+    const [userEmail, setUserEmail] = useState(null);
 
 
     useEffect(() => {
@@ -106,6 +107,18 @@ export const SecurityPage = () => {
         const userId = accessToken.oid;
         const headers = { Authorization: `Bearer ${appToken}` };
 
+        // Fetch user email from Graph (most reliable for External ID local accounts
+        // where the email claim is not returned in the token by default)
+        fetch(`https://graph.microsoft.com/v1.0/users/${userId}?$select=mail,displayName,identities`, { headers })
+            .then(r => r.json())
+            .then(d => {
+                // mail is the primary address; fall back to emailAddress identity
+                const mail = d?.mail ||
+                    d?.identities?.find(i => i.signInType === 'emailAddress')?.issuerAssignedId;
+                if (mail) setUserEmail(mail);
+            })
+            .catch(() => {});
+
         // Add user to MFA group (idempotent — 400 if already a member, safe to ignore)
         fetch(`https://graph.microsoft.com/v1.0/groups/${MFA_GROUP_ID}/members/$ref`, {
             method: 'POST',
@@ -149,24 +162,16 @@ export const SecurityPage = () => {
         };
 
         if (accessToken) {
-            // Email: try standard claims first (optionalClaims 'email' now configured),
-            // then fall back to identities array for External ID local accounts,
-            // then strip the OID UPN if it's the only option.
-            let email = accessToken.email || accessToken.preferred_username || accessToken.unique_name;
-
-            // For External ID local accounts the preferred_username / unique_name is the
-            // OID-based UPN (xxxxxxxx@tenant.onmicrosoft.com) – detect and skip it.
-            const isOidUpn = email && /^[0-9a-f-]{36}@/i.test(email);
-            if (!email || isOidUpn) {
-                // Try identities array (requires identities optional claim or user flow claim)
-                if (accessToken.identities && Array.isArray(accessToken.identities)) {
-                    const emailIdentity = accessToken.identities.find(id => id.signInType === 'emailAddress');
-                    if (emailIdentity) email = emailIdentity.issuerAssignedId;
-                }
+            // Email priority: Graph-fetched (most reliable for CIAM local accounts)
+            // → token email claim → skip OID UPN → fallback placeholder
+            let email = userEmail;
+            if (!email) {
+                const candidate = accessToken.email || accessToken.preferred_username || accessToken.unique_name;
+                const isOidUpn = candidate && /^[0-9a-f-]{36}@/i.test(candidate);
+                if (candidate && !isOidUpn) email = candidate;
             }
-            if (!email || isOidUpn) email = null; // still OID – don't show it
 
-            // Name: use display parts if available, else fall back to email prefix
+            // Name: prefer display name parts, fall back to email prefix
             const nameParts = [accessToken.given_name, accessToken.family_name].filter(Boolean);
             const name = accessToken.name ||
                 (nameParts.length ? nameParts.join(' ') : null) ||

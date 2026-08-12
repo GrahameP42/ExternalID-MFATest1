@@ -149,9 +149,19 @@ export const SecurityPage = () => {
         };
 
         if (accessToken) {
+            // For External ID local accounts, extract email from identities array
+            let email = accessToken.email || accessToken.unique_name || accessToken.preferred_username;
+            if (!email && accessToken.identities && Array.isArray(accessToken.identities)) {
+                // Find the emailAddress identity issuerAssignedId
+                const emailIdentity = accessToken.identities.find(id => id.signInType === 'emailAddress');
+                if (emailIdentity) {
+                    email = emailIdentity.issuerAssignedId;
+                }
+            }
+            
             return {
                 name: accessToken.name || accessToken.given_name || accessToken.family_name || defaultUserData.name,
-                email: accessToken.unique_name || accessToken.email || accessToken.preferred_username || accessToken.upn || defaultUserData.email,
+                email: email || accessToken.upn || defaultUserData.email,
             };
         }
 

@@ -89,7 +89,9 @@ export const SecurityPage = () => {
                     throw new Error('App token request returned empty result');
                 }
             } catch (error) {
-                setAppTokenError(`Failed to get app token: ${error.message}. Passkey functionality may be limited.`);
+                // App token failure is non-critical — passkey count and group-enroll
+                // will be skipped, but sign-in and banner validation still work.
+                console.warn('App token unavailable:', error.message);
                 setAppToken(null);
             }
         };
@@ -183,7 +185,7 @@ export const SecurityPage = () => {
         return defaultUserData;
     };
 
-    const displayError = accessTokenError || appTokenError;
+    const displayError = accessTokenError; // appTokenError is non-critical: passkey ops silently degrade
     const userData = !loading && !accessTokenError ? getUserData() : { name: "Loading...", email: "Loading..." };
     const userId = !loading && !accessTokenError ? getUserId() : null;
 
@@ -244,17 +246,9 @@ export const SecurityPage = () => {
     if (displayError) {
         return (
             <Container className="py-4">
-                <Alert variant={accessTokenError ? "danger" : "warning"}>
-                    <Alert.Heading>
-                        {accessTokenError ? "Authentication Error" : "Service Error"}
-                    </Alert.Heading>
+                <Alert variant="danger">
+                    <Alert.Heading>Authentication Error</Alert.Heading>
                     <p>{displayError}</p>
-                    {accessTokenError && appTokenError && (
-                        <>
-                            <hr />
-                            <p><strong>Additional issue:</strong> {appTokenError}</p>
-                        </>
-                    )}
                 </Alert>
             </Container>
         );

@@ -15,6 +15,7 @@
 | 02 | [PRODUCTION-DEPLOYMENT-GUIDE.md](./02-PRODUCTION-DEPLOYMENT-GUIDE.md) | Full production deployment (infrastructure, DNS, Front Door, SWA) |
 | 03 | [TENANT-CONFIGURATION-REFERENCE.md](./03-TENANT-CONFIGURATION-REFERENCE.md) | CIAM tenant config: auth methods, flows, app registration, CA policies |
 | 04 | [MULTI-APP-SSO-MIGRATION.md](./04-MULTI-APP-SSO-MIGRATION.md) | Adding a second application: SSO, token flow, Authenticator/TOTP options |
+| 05 | [B2B-GUEST-VS-LOCAL-MEMBER.md](./05-B2B-GUEST-VS-LOCAL-MEMBER.md) | B2B guest vs local member accounts, HRD, MSA federation, passkey limitations |
 
 ---
 

@@ -1,5 +1,5 @@
 import { MsalProvider, AuthenticatedTemplate, UnauthenticatedTemplate, useMsal } from '@azure/msal-react';
-import { Container, Button, Card, Spinner } from 'react-bootstrap';
+import { Container, Form, Button, Card, Spinner } from 'react-bootstrap';
 import { useState } from 'react';
 import { PageLayout } from './components/PageLayout';
 import { SecurityPage } from './components/SecurityPage';
@@ -35,15 +35,22 @@ async function resolveLoginHint(email) {
 
 const LandingPage = () => {
     const { instance } = useMsal();
+    const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const handleRedirect = async () => {
+    const handleRedirect = async (e) => {
+        e?.preventDefault();
         setLoading(true);
         try {
-            // Route to the CIAM SUSI (Sign-Up/Sign-In) combined user flow.
-            // No login_hint — CIAM shows the email field so passkey autofill works for
-            // existing users AND the "No account? Create one" link is visible for new users.
-            await instance.loginRedirect({ ...loginRequest, prompt: 'login' });
+            // prompt=login forces fresh CIAM session (clears account picker).
+            // If the user typed their email, pass it as loginHint so CIAM pre-fills
+            // the email field (routes to password/passkey step for known users).
+            // If blank, no loginHint — CIAM shows the empty email field where
+            // passkey autofill (autocomplete="username webauthn") can surface.
+            const request = email.trim()
+                ? { ...loginRequest, prompt: 'login', loginHint: email.trim() }
+                : { ...loginRequest, prompt: 'login' };
+            await instance.loginRedirect(request);
         } finally {
             setLoading(false);
         }
@@ -55,18 +62,29 @@ const LandingPage = () => {
                 <Card.Body>
                     <h5 className="mb-1">Sign in or create an account</h5>
                     <p className="text-muted small mb-4">
-                        Sign in with your passkey, or create a new account.
+                        Enter your email to sign in, or leave it blank to use passkey autofill.
                     </p>
-                    <Button
-                        variant="primary"
-                        className="w-100"
-                        onClick={handleRedirect}
-                        disabled={loading}
-                    >
-                        {loading
-                            ? <><Spinner animation="border" size="sm" className="me-2" />Please wait...</>
-                            : 'Sign in / Create account'}
-                    </Button>
+                    <Form onSubmit={handleRedirect}>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Email address <span className="text-muted fw-normal">(optional)</span></Form.Label>
+                            <Form.Control
+                                type="email"
+                                placeholder="you@example.com"
+                                value={email}
+                                onChange={e => setEmail(e.target.value)}
+                                autoFocus
+                                disabled={loading}
+                            />
+                            <Form.Text className="text-muted">
+                                New users: leave blank — you'll enter your email on the next page.
+                            </Form.Text>
+                        </Form.Group>
+                        <Button type="submit" variant="primary" className="w-100" disabled={loading}>
+                            {loading
+                                ? <><Spinner animation="border" size="sm" className="me-2" />Please wait...</>
+                                : 'Continue'}
+                        </Button>
+                    </Form>
                 </Card.Body>
             </Card>
         </Container>

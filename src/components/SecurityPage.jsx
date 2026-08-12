@@ -91,8 +91,11 @@ export const SecurityPage = () => {
             } catch (error) {
                 // App token failure is non-critical — passkey count and group-enroll
                 // will be skipped, but sign-in and banner validation still work.
+                // Set passkeyCount=0 so bootstrap mode activates for new users
+                // (they see "Register your first passkey" instead of the looping step-up).
                 console.warn('App token unavailable:', error.message);
                 setAppToken(null);
+                setPasskeyCount(0);
             }
         };
 
@@ -279,8 +282,10 @@ export const SecurityPage = () => {
                     <span>MFA verified — passkey operations are unlocked for this session.</span>
                     <small className="ms-auto text-muted">amr: {accessToken?.amr?.join(', ')}</small>
                 </Alert>
-            ) : mfaElevated && passkeyCount === 0 ? (
-                // Bootstrap: new user with no passkeys — allow registration with OTP so they can enrol
+            ) : passkeyCount === 0 ? (
+                // Bootstrap: new user with no passkeys (OR passkeyCount unknown due to
+                // CORS-blocked app token). Guide them to register their first passkey.
+                // Do NOT show the OTP step-up button — it loops for local accounts.
                 <Alert variant="info" className="d-flex align-items-center gap-2">
                     <FaShieldAlt className="flex-shrink-0" />
                     <span>
@@ -328,7 +333,7 @@ export const SecurityPage = () => {
                 onShowToast={showToast}
                 appToken={appToken}
                 userId={userId}
-                ngcmfaExpiry={phishingResistant || (mfaElevated && passkeyCount === 0) ? ngcmfaExpiration : null}
+                ngcmfaExpiry={phishingResistant || passkeyCount === 0 ? ngcmfaExpiration : null}
             />
 
             {/* Toast Notifications */}

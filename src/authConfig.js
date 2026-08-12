@@ -99,5 +99,9 @@ export const appConfig = {
     appId: _clientId,
     tenantId: _tenantId,
     appSecret: env.VITE_APP_SECRET || '',
-    customDomain: env.VITE_CUSTOM_DOMAIN || '', // Optional: set to a custom URL domain if configured in the tenant
+    customDomain: env.VITE_CUSTOM_DOMAIN || 'login.azddns.top',
+    // passkey registration RP origin — must match the domain the app is served from
+    // when served via Front Door (login.azddns.top), this ensures the WebAuthn RP ID
+    // is a valid suffix of petchyentraexternalidtest03.ciamlogin.com
+    passkeyOrigin: env.VITE_PASSKEY_ORIGIN || 'https://login.azddns.top',
 };

@@ -529,9 +529,9 @@ az rest --method DELETE `
 
 | Authentication Method | Local Members | B2B Guests | Social IdP | Notes |
 |----------------------|:-------------:|:----------:|:----------:|-------|
-| **Email + Password** | ✅ Primary | ❌ | ❌ | UserFlow: `EmailPassword-OAUTH` |
-| **FIDO2 Passkeys (device-bound)** | ✅ Primary | ✅ | ❌ | Registers against custom URL domain as RP |
-| **FIDO2 Passkeys (synced)** | ✅ Primary | ✅ | ❌ | Phone passkeys: iCloud Keychain, Google PM |
+| **Email + Password** | ✅ Primary | ❌ Home IdP | ❌ | UserFlow: `EmailPassword-OAUTH`. Guests auth via home tenant |
+| **FIDO2 Passkeys (device-bound)** | ✅ Primary | ⚠️ Home IdP only⁵ | ❌ | Registers against custom URL domain as RP |
+| **FIDO2 Passkeys (synced)** | ✅ Primary | ⚠️ Home IdP only⁵ | ❌ | Phone passkeys: iCloud Keychain, Google PM |
 | **Email OTP (MFA second factor)** | ✅ Always on¹ | ⚠️ Suppressible² | ❌ | `allowExternalIdToUseEmailOtp` |
 | **SMS / Phone OTP** | ⚠️ Limited³ | ❌ | ❌ | 500 errors in some tenant configurations |
 | **Microsoft Authenticator (push)** | ❌ Not available | ❌ | ❌ | Requires Entra ID P1/P2 — workforce only |
@@ -559,6 +559,12 @@ az rest --method DELETE `
 - **Temporary password**: Create user via Graph with `passwordProfile.password` + `forceChangePasswordNextSignIn: true` — user enters it at the CIAM password step
 - **Self-service sign-up**: CIAM SUSI flow with email OTP verification built in
 - **Admin invite**: Create account via Graph, deliver temp password securely out-of-band
+
+⁵ **FIDO2 Passkeys for B2B Guests** — B2B guests authenticate via their **home identity provider** (e.g. Microsoft Account, Google), not through CIAM's own sign-in page. Their passkeys are registered with the home IdP, not with this CIAM tenant.
+
+Critical limitation for phishing-resistant enforcement: **AMR claims from the home IdP's passkey authentication do not reliably flow into the CIAM-issued token**. Validated behaviour: an MSA guest (`g.petch@gmail.com`) signing in with their MSA passkey receives a CIAM token with `amr: []` (empty). The RP cannot detect phishing-resistant MFA — the green banner will not appear.
+
+**For RP-enforced phishing-resistant MFA, B2B guests are not a supported account type.** Use local member accounts (email+password + FIDO2 passkey) instead.
 
 > **For organisations requiring Microsoft Authenticator or TOTP**:
 > These methods are not available in External ID CIAM. The recommended architecture is to federate External ID with an upstream **Entra ID workforce tenant** that supports the full Authenticator feature set. Users authenticate to the workforce tenant (Authenticator/TOTP/phone), and the resulting token flows to External ID via OIDC federation. See [04-MULTI-APP-SSO-MIGRATION.md](./04-MULTI-APP-SSO-MIGRATION.md) §6 for implementation details.

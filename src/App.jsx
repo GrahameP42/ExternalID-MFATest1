@@ -38,23 +38,30 @@ const LandingPage = () => {
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const handleContinue = async (e) => {
+    const handleSignIn = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            // No login_hint: CIAM email field stays blank so autocomplete="username webauthn"
+            // surfaces the registered passkey for one-tap phishing-resistant sign-in.
+            await instance.loginRedirect({ ...loginRequest });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCreateAccount = async (e) => {
         e.preventDefault();
         if (!email.trim()) return;
         setLoading(true);
         try {
-            // Check whether the account already exists in the directory.
-            // • Existing user  → redirect WITHOUT login_hint so the CIAM email field is
-            //   blank; autocomplete="username webauthn" then surfaces the registered passkey
-            //   as a browser autofill suggestion for a single-gesture phishing-resistant sign-in.
-            // • New user       → redirect WITH login_hint so CIAM pre-fills the email and
-            //   routes straight to the sign-up/verify flow (no need to re-enter the address).
-            // • Lookup failure → fall back to no login_hint (safe; existing behaviour).
-            const upn = await resolveLoginHint(email.trim());
-            const request = upn
-                ? { ...loginRequest }                                    // existing: let passkey autofill work
-                : { ...loginRequest, loginHint: email.trim() };          // new user: pre-fill sign-up form
-            await instance.loginRedirect(request);
+            // prompt=create directs CIAM to the sign-up flow.
+            // loginHint pre-fills the email so the user doesn't have to re-enter it.
+            await instance.loginRedirect({
+                ...loginRequest,
+                loginHint: email.trim(),
+                extraQueryParameters: { prompt: 'create' },
+            });
         } finally {
             setLoading(false);
         }
@@ -62,29 +69,39 @@ const LandingPage = () => {
 
     return (
         <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: '60vh' }}>
-            <Card style={{ width: '400px' }} className="p-4 shadow-sm">
+            <Card style={{ width: '420px' }} className="p-4 shadow-sm">
                 <Card.Body>
                     <h5 className="mb-1">Sign in or create an account</h5>
-                    <p className="text-muted small mb-4">
+                    <p className="text-muted small mb-3">
                         Use your email address — personal, work, or any address you own.
                     </p>
-                    <Form onSubmit={handleContinue}>
+
+                    {/* Sign-in path — no email needed; passkey autofill works on the next page */}
+                    <Button
+                        variant="primary"
+                        className="w-100 mb-3"
+                        onClick={handleSignIn}
+                        disabled={loading}
+                    >
+                        {loading ? <><Spinner animation="border" size="sm" className="me-2" />Please wait...</> : 'Sign in'}
+                    </Button>
+
+                    <hr className="my-3" />
+                    <p className="text-muted small mb-2 text-center">New here? Enter your email to create an account.</p>
+
+                    {/* Sign-up path — email required to pre-fill the CIAM sign-up form */}
+                    <Form onSubmit={handleCreateAccount}>
                         <Form.Group className="mb-3">
-                            <Form.Label>Email address</Form.Label>
                             <Form.Control
                                 type="email"
                                 placeholder="you@example.com"
                                 value={email}
                                 onChange={e => setEmail(e.target.value)}
-                                autoFocus
                                 disabled={loading}
                             />
-                            <Form.Text className="text-muted">
-                                New users will be prompted to verify their email and set a password.
-                            </Form.Text>
                         </Form.Group>
-                        <Button type="submit" variant="primary" className="w-100" disabled={loading || !email.trim()}>
-                            {loading ? <><Spinner animation="border" size="sm" className="me-2" />Resolving...</> : 'Continue'}
+                        <Button type="submit" variant="outline-primary" className="w-100" disabled={loading || !email.trim()}>
+                            Create account
                         </Button>
                     </Form>
                 </Card.Body>

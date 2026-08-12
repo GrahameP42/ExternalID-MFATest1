@@ -1,5 +1,5 @@
 import { MsalProvider, AuthenticatedTemplate, UnauthenticatedTemplate, useMsal } from '@azure/msal-react';
-import { Container, Form, Button, Card, Spinner } from 'react-bootstrap';
+import { Container, Button, Card, Spinner } from 'react-bootstrap';
 import { useState } from 'react';
 import { PageLayout } from './components/PageLayout';
 import { SecurityPage } from './components/SecurityPage';
@@ -35,33 +35,15 @@ async function resolveLoginHint(email) {
 
 const LandingPage = () => {
     const { instance } = useMsal();
-    const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const handleSignIn = async (e) => {
-        e.preventDefault();
+    const handleRedirect = async () => {
         setLoading(true);
         try {
-            // No login_hint: CIAM email field stays blank so autocomplete="username webauthn"
-            // surfaces the registered passkey for one-tap phishing-resistant sign-in.
-            await instance.loginRedirect({ ...loginRequest });
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleCreateAccount = async (e) => {
-        e.preventDefault();
-        if (!email.trim()) return;
-        setLoading(true);
-        try {
-            // prompt=create directs CIAM to the sign-up flow.
-            // loginHint pre-fills the email so the user doesn't have to re-enter it.
-            await instance.loginRedirect({
-                ...loginRequest,
-                loginHint: email.trim(),
-                extraQueryParameters: { prompt: 'create' },
-            });
+            // Route to the CIAM SUSI (Sign-Up/Sign-In) combined user flow.
+            // No login_hint — CIAM shows the email field so passkey autofill works for
+            // existing users AND the "No account? Create one" link is visible for new users.
+            await instance.loginRedirect({ ...loginRequest, prompt: 'login' });
         } finally {
             setLoading(false);
         }
@@ -69,41 +51,22 @@ const LandingPage = () => {
 
     return (
         <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: '60vh' }}>
-            <Card style={{ width: '420px' }} className="p-4 shadow-sm">
+            <Card style={{ width: '400px' }} className="p-4 shadow-sm">
                 <Card.Body>
                     <h5 className="mb-1">Sign in or create an account</h5>
-                    <p className="text-muted small mb-3">
-                        Use your email address — personal, work, or any address you own.
+                    <p className="text-muted small mb-4">
+                        Sign in with your passkey, or create a new account.
                     </p>
-
-                    {/* Sign-in path — no email needed; passkey autofill works on the next page */}
                     <Button
                         variant="primary"
-                        className="w-100 mb-3"
-                        onClick={handleSignIn}
+                        className="w-100"
+                        onClick={handleRedirect}
                         disabled={loading}
                     >
-                        {loading ? <><Spinner animation="border" size="sm" className="me-2" />Please wait...</> : 'Sign in'}
+                        {loading
+                            ? <><Spinner animation="border" size="sm" className="me-2" />Please wait...</>
+                            : 'Sign in / Create account'}
                     </Button>
-
-                    <hr className="my-3" />
-                    <p className="text-muted small mb-2 text-center">New here? Enter your email to create an account.</p>
-
-                    {/* Sign-up path — email required to pre-fill the CIAM sign-up form */}
-                    <Form onSubmit={handleCreateAccount}>
-                        <Form.Group className="mb-3">
-                            <Form.Control
-                                type="email"
-                                placeholder="you@example.com"
-                                value={email}
-                                onChange={e => setEmail(e.target.value)}
-                                disabled={loading}
-                            />
-                        </Form.Group>
-                        <Button type="submit" variant="outline-primary" className="w-100" disabled={loading || !email.trim()}>
-                            Create account
-                        </Button>
-                    </Form>
                 </Card.Body>
             </Card>
         </Container>

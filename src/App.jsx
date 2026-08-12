@@ -40,16 +40,21 @@ const LandingPage = () => {
 
     const handleContinue = async (e) => {
         e.preventDefault();
+        if (!email.trim()) return;
         setLoading(true);
         try {
-            // Redirect to CIAM WITHOUT login_hint so the CIAM email field is displayed.
-            // That field has autocomplete="username webauthn", which surfaces the registered
-            // passkey as a browser autofill suggestion — the user can sign in with one tap,
-            // satisfying both first-factor and CA MFA in a single gesture.
-            //
-            // Note: passing login_hint (even via extraQueryParameters) skips the email field
-            // and goes straight to the password step, hiding the passkey autofill entirely.
-            await instance.loginRedirect({ ...loginRequest });
+            // Check whether the account already exists in the directory.
+            // • Existing user  → redirect WITHOUT login_hint so the CIAM email field is
+            //   blank; autocomplete="username webauthn" then surfaces the registered passkey
+            //   as a browser autofill suggestion for a single-gesture phishing-resistant sign-in.
+            // • New user       → redirect WITH login_hint so CIAM pre-fills the email and
+            //   routes straight to the sign-up/verify flow (no need to re-enter the address).
+            // • Lookup failure → fall back to no login_hint (safe; existing behaviour).
+            const upn = await resolveLoginHint(email.trim());
+            const request = upn
+                ? { ...loginRequest }                                    // existing: let passkey autofill work
+                : { ...loginRequest, loginHint: email.trim() };          // new user: pre-fill sign-up form
+            await instance.loginRedirect(request);
         } finally {
             setLoading(false);
         }
@@ -78,7 +83,7 @@ const LandingPage = () => {
                                 New users will be prompted to verify their email and set a password.
                             </Form.Text>
                         </Form.Group>
-                        <Button type="submit" variant="primary" className="w-100" disabled={loading}>
+                        <Button type="submit" variant="primary" className="w-100" disabled={loading || !email.trim()}>
                             {loading ? <><Spinner animation="border" size="sm" className="me-2" />Resolving...</> : 'Continue'}
                         </Button>
                     </Form>

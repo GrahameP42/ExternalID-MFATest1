@@ -149,20 +149,30 @@ export const SecurityPage = () => {
         };
 
         if (accessToken) {
-            // For External ID local accounts, extract email from identities array
-            let email = accessToken.email || accessToken.unique_name || accessToken.preferred_username;
-            if (!email && accessToken.identities && Array.isArray(accessToken.identities)) {
-                // Find the emailAddress identity issuerAssignedId
-                const emailIdentity = accessToken.identities.find(id => id.signInType === 'emailAddress');
-                if (emailIdentity) {
-                    email = emailIdentity.issuerAssignedId;
+            // Email: try standard claims first (optionalClaims 'email' now configured),
+            // then fall back to identities array for External ID local accounts,
+            // then strip the OID UPN if it's the only option.
+            let email = accessToken.email || accessToken.preferred_username || accessToken.unique_name;
+
+            // For External ID local accounts the preferred_username / unique_name is the
+            // OID-based UPN (xxxxxxxx@tenant.onmicrosoft.com) – detect and skip it.
+            const isOidUpn = email && /^[0-9a-f-]{36}@/i.test(email);
+            if (!email || isOidUpn) {
+                // Try identities array (requires identities optional claim or user flow claim)
+                if (accessToken.identities && Array.isArray(accessToken.identities)) {
+                    const emailIdentity = accessToken.identities.find(id => id.signInType === 'emailAddress');
+                    if (emailIdentity) email = emailIdentity.issuerAssignedId;
                 }
             }
-            
-            return {
-                name: accessToken.name || accessToken.given_name || accessToken.family_name || defaultUserData.name,
-                email: email || accessToken.upn || defaultUserData.email,
-            };
+            if (!email || isOidUpn) email = null; // still OID – don't show it
+
+            // Name: use display parts if available, else fall back to email prefix
+            const nameParts = [accessToken.given_name, accessToken.family_name].filter(Boolean);
+            const name = accessToken.name ||
+                (nameParts.length ? nameParts.join(' ') : null) ||
+                (email ? email.split('@')[0] : defaultUserData.name);
+
+            return { name, email: email || defaultUserData.email };
         }
 
         return defaultUserData;

@@ -54,7 +54,11 @@ const LandingPage = () => {
             if (email.trim()) {
                 const upn = await resolveLoginHint(email.trim());
                 if (upn) {
-                    request = { ...request, loginHint: upn };
+                    // User exists in CIAM directory — pass the FRIENDLY EMAIL (not the
+                    // OID-based UPN) so CIAM displays it correctly in the header.
+                    // The UPN lookup was only needed to confirm existence; CIAM routes
+                    // local accounts correctly from the friendly email too.
+                    request = { ...request, loginHint: email.trim() };
                 }
                 // New user (upn === null): no loginHint, CIAM handles sign-up routing
             }

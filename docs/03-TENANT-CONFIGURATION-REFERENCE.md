@@ -527,21 +527,28 @@ az rest --method DELETE `
 
 ## 8. Authentication Methods Policy: Full State Overview
 
-```
-External ID Authentication Method Availability Matrix:
+| Authentication Method | Local Members | B2B Guests | Social IdP | Notes |
+|----------------------|:-------------:|:----------:|:----------:|-------|
+| **Email + Password** | ✅ Primary | ❌ | ❌ | UserFlow: `EmailPassword-OAUTH` |
+| **FIDO2 Passkeys (device-bound)** | ✅ Primary | ✅ | ❌ | Registers against custom URL domain as RP |
+| **FIDO2 Passkeys (synced)** | ✅ Primary | ✅ | ❌ | Phone passkeys: iCloud Keychain, Google PM |
+| **Email OTP (MFA second factor)** | ✅ Always on¹ | ⚠️ Suppressible² | ❌ | `allowExternalIdToUseEmailOtp` |
+| **SMS / Phone OTP** | ⚠️ Limited³ | ❌ | ❌ | 500 errors in some tenant configurations |
+| **Microsoft Authenticator (push)** | ❌ Not available | ❌ | ❌ | Requires Entra ID P1/P2 — workforce only |
+| **Microsoft Authenticator (TOTP)** | ❌ Not available | ❌ | ❌ | Requires Entra ID P1/P2 — workforce only |
+| **TOTP apps (Google Auth, Authy)** | ❌ Not available | ❌ | ❌ | No TOTP method type in External ID |
+| **Temporary Access Pass (TAP)** | ✅ Via Graph API | ✅ | ❌ | Time-limited; onboarding / account recovery only |
+| **Google Sign-In** | ❌ | ❌ | ✅ | UserFlow: `Google-OAUTH` |
+| **Facebook / Apple Sign-In** | ❌ | ❌ | ✅ | UserFlow: `Facebook-OAUTH` / Apple OIDC |
+| **Custom SAML / OIDC federation** | ❌ | ❌ | ✅ | Enterprise IdP or upstream workforce Entra ID |
 
-Method                    | Local Members | B2B Guests | Social | Notes
-──────────────────────────┼───────────────┼────────────┼────────┼──────────────────────────────
-Email + Password          | ✅ Primary     | ❌         | ❌     | UserFlow: EmailPassword-OAUTH
-FIDO2 Passkeys (device)   | ✅ Primary     | ✅          | ❌     | Registers against custom domain
-FIDO2 Passkeys (synced)   | ✅ Primary     | ✅          | ❌     | Phone/iCloud/Google PM
-Email OTP (MFA)           | ✅ Always on   | ⚠️ Disable | ❌     | allowExternalIdToUseEmailOtp
-SMS / Phone OTP           | ⚠️ Limited     | ❌         | ❌     | 500 errors in some tenants
-Microsoft Authenticator   | ❌ Not avail   | ❌         | ❌     | Requires Entra P1/P2 (workforce)
-TOTP (Authenticator app)  | ❌ Not avail   | ❌         | ❌     | No TOTP method in External ID
-Temporary Access Pass     | ✅ Via Graph   | ✅          | ❌     | Onboarding only, time-limited
-Google Sign-In            | ❌             | ❌         | ✅      | UserFlow: Google-OAUTH
-Social SAML/OIDC          | ❌             | ❌         | ✅      | Custom federation
-```
+**Notes**:
 
-**For organisations requiring Authenticator/TOTP**: The recommended path is to federate External ID with a workforce Entra ID tenant that supports all Authenticator features. Users authenticate via the workforce tenant (which has Authenticator), and the token is bridged to External ID via OIDC federation. See [04-MULTI-APP-SSO-MIGRATION.md](./04-MULTI-APP-SSO-MIGRATION.md) for details.
+¹ **Email OTP for local members cannot be disabled** — it is a hardcoded platform fallback for email+password local accounts regardless of the `allowExternalIdToUseEmailOtp` policy value. App-side AMR enforcement is the only mechanism to reject OTP-based sessions.
+
+² **B2B/guest OTP suppression** — setting `allowExternalIdToUseEmailOtp: disabled` suppresses email OTP only for B2B invited guest users, not for local members.
+
+³ **SMS OTP** — availability varies by tenant region and configuration. Returns HTTP 500 in some External ID tenants; not a reliable fallback.
+
+> **For organisations requiring Microsoft Authenticator or TOTP**:
+> These methods are not available in External ID CIAM. The recommended architecture is to federate External ID with an upstream **Entra ID workforce tenant** that supports the full Authenticator feature set. Users authenticate to the workforce tenant (Authenticator/TOTP/phone), and the resulting token flows to External ID via OIDC federation. See [04-MULTI-APP-SSO-MIGRATION.md](./04-MULTI-APP-SSO-MIGRATION.md) §6 for implementation details.
